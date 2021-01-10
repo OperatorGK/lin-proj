@@ -29,3 +29,13 @@ pub fn qr_gs(matrix: MatrixView) -> (Matrix, Matrix) {
 
     (q, r)
 }
+
+pub fn qr_unshifted(matrix: MatrixView, iterations: usize) -> Vector {
+    let mut a = matrix.into_owned();
+    for _ in 0..iterations {
+        let (q, r) = qr_gs(a.view());
+        a = r.dot(&q);
+    }
+    a.into_diag()
+}
+
