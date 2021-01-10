@@ -1,4 +1,6 @@
 use crate::types::*;
+use ndarray::array;
+use ndarray::s;
 
 fn proj(v: VectorView, u: VectorView) -> Vector {
     let vu = v.dot(&u);
@@ -39,3 +41,35 @@ pub fn qr_unshifted(matrix: MatrixView, iterations: usize) -> Vector {
     a.into_diag()
 }
 
+pub fn givens(a: f64, b: f64) -> (f64, f64) {
+    let r = a.hypot(b);
+    (a / r, -b / r)
+}
+
+pub fn qr_hess_step(mut matrix: MatrixViewMut) {
+    let n = matrix.shape()[0];
+    let mut c = vec![0.; n - 1];
+    let mut s = vec![0.; n - 1];
+
+    for k in 0..n - 1 {
+        let (ck, sk) = givens(matrix[[k, k]], matrix[[k + 1, k]]);
+        c[k] = ck;
+        s[k] = sk;
+        let g = array![[c[k], -s[k]], [s[k], c[k]]];
+        let mut slice = matrix.slice_mut(s![k..k+2, k..n]);
+        slice.assign(&g.dot(&slice));
+    }
+    for k in 0..n - 1 {
+        let g = array![[c[k], s[k]], [-s[k], c[k]]];
+        let mut slice = matrix.slice_mut(s![0..k+2, k..k+2]);
+        slice.assign(&slice.dot(&g));
+    }
+}
+
+pub fn qr_hess(matrix: MatrixView, iterations: usize) -> Vector {
+    let mut a = matrix.into_owned();
+    for _ in 0..iterations {
+        qr_hess_step(a.view_mut());
+    }
+    a.into_diag()
+}
