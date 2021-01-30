@@ -25,5 +25,15 @@ mod tests {
             [0., 1., -9.]];
         let eig = crate::qr::qr_hess(c.view(), 40);
         println!("{}", eig);
+
+        println!("Householder reduction");
+        let mut d = ndarray::array![
+            [1., 2., 3., 4.],
+            [5., 6., 7., 8.],
+            [9., 10., 11., 12.],
+            [13., 14., 15., 16.]];
+        crate::qr::hess_form(d.view_mut());
+        println!("{}", d);
+        println!("{}", crate::qr::qr_hess(d.view(), 40));
     }
 }
