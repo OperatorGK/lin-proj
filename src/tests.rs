@@ -19,12 +19,12 @@ mod tests {
         println!("{}", eig);
 
         println!("QR -- Hessenberg");
-        let c = ndarray::array![
+        let mut c = ndarray::array![
             [3., 7., 5.],
             [-1., -3., -4.],
             [0., 1., -9.]];
-        let eig = crate::qr::qr_hess(c.view(), 40);
-        println!("{}", eig);
+        crate::qr::qr_hess(c.view_mut(), 40);
+        println!("{}", c);
 
         println!("Householder reduction");
         let mut d = ndarray::array![
@@ -34,6 +34,13 @@ mod tests {
             [13., 14., 15., 16.]];
         crate::qr::hess_form(d.view_mut());
         println!("{}", d);
-        println!("{}", crate::qr::qr_hess(d.view(), 40));
+
+        println!("QR -- double-shift");
+        let mut e = ndarray::array![
+            [-1., 2., 6.],
+            [7., 0., 1.],
+            [-0., -3., 3.]];
+        crate::qr::qr_francis_shift(e.view_mut());
+        println!("{}", e);
     }
 }

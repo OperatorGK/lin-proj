@@ -2,6 +2,11 @@ use crate::types::*;
 use ndarray::array;
 use ndarray::s;
 
+use std::cmp::max;
+use std::cmp::min;
+
+const EPS: f64 = 1e-4;
+
 fn norm(v: VectorView) -> f64 {
     v.dot(&v).sqrt()
 }
@@ -50,29 +55,33 @@ pub fn givens(a: f64, b: f64) -> (f64, f64) {
     (a / r, -b / r)
 }
 
-pub fn qr_hess_step(mut matrix: MatrixViewMut) {
-    let n = matrix.shape()[0];
-    let mut gv = vec![(0., 0.); n - 1];
-
-    for k in 0..n - 1 {
-        gv[k] = givens(matrix[[k, k]], matrix[[k + 1, k]]);
-        let g = array![[gv[k].0, -gv[k].1], [gv[k].1, gv[k].0]];
-        let mut slice = matrix.slice_mut(s![k..k+2, k..n]);
-        slice.assign(&g.dot(&slice));
-    }
-    for k in 0..n - 1 {
-        let g = array![[gv[k].0, gv[k].1], [-gv[k].1, gv[k].0]];
-        let mut slice = matrix.slice_mut(s![0..k+2, k..k+2]);
-        slice.assign(&slice.dot(&g));
-    }
+pub fn givens_rot_left(gv: (f64, f64), mut m: MatrixViewMut) {
+    let g = array![[gv.0, -gv.1], [gv.1, gv.0]];
+    m.assign(&g.dot(&m));
 }
 
-pub fn qr_hess(matrix: MatrixView, iterations: usize) -> Vector {
-    let mut a = matrix.into_owned();
+pub fn givens_rot_right(gv: (f64, f64), mut m: MatrixViewMut) {
+    let g = array![[gv.0, gv.1], [-gv.1, gv.0]];
+    m.assign(&m.dot(&g));
+}
+
+pub fn qr_hess(mut m: MatrixViewMut, iterations: usize) -> Matrix {
+    let n = m.shape()[0];
+    let mut gv = vec![(0., 0.); n - 1];
+    let mut q = Matrix.eye(n);
+
     for _ in 0..iterations {
-        qr_hess_step(a.view_mut());
+        for k in 0..n - 1 {
+            gv[k] = givens(m[[k, k]], m[[k + 1, k]]);
+            givens_rot_left(gv[k], m.slice_mut(s![k..k+2, k..n]));
+        }
+        for k in 0..n - 1 {
+            givens_rot_right(gv[k], m.slice_mut(s![0..k+2, k..k+2]));
+            givens_rot_right(gv[k], q.slice_mut(s![0..k+2, k..k+2]));
+        }
     }
-    a.into_diag()
+
+    q
 }
 
 pub fn hh_vec(x: VectorView) -> Vector {
@@ -82,13 +91,76 @@ pub fn hh_vec(x: VectorView) -> Vector {
     u
 }
 
-pub fn hess_form(mut matrix: MatrixViewMut) {
-    let n = matrix.shape()[0];
+pub fn hh_rot_left(u: VectorView, mut m: MatrixViewMut) {
+    let u = u.into_shape([u.shape()[0], 1usize]).unwrap();
+    m -= &(2. * u.dot(&u.t()).dot(&m));
+}
+
+pub fn hh_rot_right(u: VectorView, mut m: MatrixViewMut) {
+    let u = u.into_shape([u.shape()[0], 1usize]).unwrap();
+    m -= &(2. * m.dot(&u).dot(&u.t()));
+}
+
+pub fn hess_form(mut m: MatrixViewMut) -> Matrix {
+    let n = m.shape()[0];
+    let mut q = Matrix.eye(n);
     for k in 0..n - 2 {
-        let u = hh_vec(matrix.slice(s![k + 1..n, k])).into_shape([n - k - 1, 1usize]).unwrap();
-        let mut slice = matrix.slice_mut(s![k+1..n, k..n]);
-        slice -= &(2. * u.dot(&u.t()).dot(&slice));
-        let mut slice = matrix.slice_mut(s![0..n, k+1..n]);
-        slice -= &(2. * slice.dot(&u).dot(&u.t()));
+        let u = hh_vec(m.slice(s![k + 1..n, k]));
+        hh_rot_left(u.view(), m.slice_mut(s![k+1..n, k..n]));
+        hh_rot_right(u.view(), m.slice_mut(s![0..n, k+1..n]));
+        hh_rot_right(u.view(), q.slice_mut(s![0..n, k+1..n]));
     }
+    q
+}
+
+pub fn qr_francis_shift(mut m: MatrixViewMut) {
+    let n = m.shape()[0];
+    let mut p = n - 1;
+    let mut o = Matrix.eye(n);
+
+    while p > 1 {
+        let q = p - 1;
+
+        let s = m[[q, q]] + m[[p, p]];
+        let t = m[[q, q]] * m[[p, p]] - m[[q, p]] * m[[p, q]];
+
+        let mut x = m[[0, 0]] * m[[0, 0]] + m[[0, 1]] * m[[1, 0]] - s * m[[1, 1]] + t;
+        let mut y = m[[1, 0]] * (m[[0, 0]] + m[[1, 1]] - s);
+        let mut z = m[[1, 0]] * m[[2, 1]];
+
+        for k in 0..p - 1 {
+            let u = hh_vec(array![x, y, z].view());
+            let r = max(1, k) - 1;
+            hh_rot_left(u.view(), m.slice_mut(s![k..k+3, r..n]));
+
+            let r = min(k + 4, p) - 1;
+            hh_rot_right(u.view(), m.slice_mut(s![0..r+1, k..k+3]));
+            hh_rot_right(u.view(), o.slice_mut(s![0..r+1, k..k+3]));
+
+            if k != p - 2 {
+                x = m[[k + 1, k]];
+                y = m[[k + 2, k]];
+                z = m[[k + 3, k]];
+            }
+        }
+
+        let gv = givens(x, y);
+        givens_rot_left(gv, m.slice_mut(s![q..q+2, p-2..n]));
+        givens_rot_right(gv, m.slice_mut(s![0..p+1, q..q+2]));
+        givens_rot_right(gv, o.slice_mut(s![0..p+1, q..q+2]));
+
+        if m[[p, q]].abs() < EPS * (m[[q, q]].abs() + m[[p, p]].abs()) {
+            m[[p, q]] = 0.;
+            p -= 1;
+        } else if m[[p - 1, q - 1]].abs() < EPS * (m[[q - 1, q - 1]].abs() + m[[q, q]].abs()) {
+            m[[p - 1, q - 1]] = 0.;
+            p -= 2;
+        }
+    }
+}
+
+fn schur_decomposition(mut m: MatrixViewMut) -> Matrix {
+    let q1 = hess_form(m.view_mut());
+    let q2 = qr_francis_shift(m);
+    q2.dot(q1)
 }
