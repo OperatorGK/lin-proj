@@ -41,13 +41,16 @@ pub fn qr_gs(matrix: MatrixView) -> (Matrix, Matrix) {
     (q, r)
 }
 
-pub fn qr_unshifted(matrix: MatrixView, iterations: usize) -> Vector {
-    let mut a = matrix.into_owned();
+pub fn qr_unshifted(mut m: MatrixViewMut, iterations: usize) -> Matrix {
+    let mut a = m.into_owned();
+    let mut u = Matrix.eye(n);
+
     for _ in 0..iterations {
         let (q, r) = qr_gs(a.view());
         a = r.dot(&q);
+        u = u.dot(&q);
     }
-    a.into_diag()
+    u
 }
 
 pub fn givens(a: f64, b: f64) -> (f64, f64) {
@@ -68,7 +71,7 @@ pub fn givens_rot_right(gv: (f64, f64), mut m: MatrixViewMut) {
 pub fn qr_hess(mut m: MatrixViewMut, iterations: usize) -> Matrix {
     let n = m.shape()[0];
     let mut gv = vec![(0., 0.); n - 1];
-    let mut q = Matrix.eye(n);
+    let mut u = Matrix.eye(n);
 
     for _ in 0..iterations {
         for k in 0..n - 1 {
@@ -77,11 +80,11 @@ pub fn qr_hess(mut m: MatrixViewMut, iterations: usize) -> Matrix {
         }
         for k in 0..n - 1 {
             givens_rot_right(gv[k], m.slice_mut(s![0..k+2, k..k+2]));
-            givens_rot_right(gv[k], q.slice_mut(s![0..k+2, k..k+2]));
+            givens_rot_right(gv[k], u.slice_mut(s![0..k+2, k..k+2]));
         }
     }
 
-    q
+    u
 }
 
 pub fn hh_vec(x: VectorView) -> Vector {
@@ -103,22 +106,23 @@ pub fn hh_rot_right(u: VectorView, mut m: MatrixViewMut) {
 
 pub fn hess_form(mut m: MatrixViewMut) -> Matrix {
     let n = m.shape()[0];
-    let mut q = Matrix.eye(n);
+    let mut u = Matrix.eye(n);
     for k in 0..n - 2 {
-        let u = hh_vec(m.slice(s![k + 1..n, k]));
-        hh_rot_left(u.view(), m.slice_mut(s![k+1..n, k..n]));
-        hh_rot_right(u.view(), m.slice_mut(s![0..n, k+1..n]));
-        hh_rot_right(u.view(), q.slice_mut(s![0..n, k+1..n]));
+        let v = hh_vec(m.slice(s![k + 1..n, k]));
+        hh_rot_left(v.view(), m.slice_mut(s![k+1..n, k..n]));
+        hh_rot_right(v.view(), m.slice_mut(s![0..n, k+1..n]));
+        hh_rot_right(v.view(), u.slice_mut(s![0..n, k+1..n]));
     }
-    q
+    u
 }
 
-pub fn qr_francis_shift(mut m: MatrixViewMut) {
+pub fn qr_francis_shift(mut m: MatrixViewMut, iterations: usize) -> Matrix {
     let n = m.shape()[0];
     let mut p = n - 1;
-    let mut o = Matrix.eye(n);
+    let mut u = Matrix.eye(n);
+    let mut i = 0;
 
-    while p > 1 {
+    while p > 1 && i < iterations {
         let q = p - 1;
 
         let s = m[[q, q]] + m[[p, p]];
@@ -129,13 +133,13 @@ pub fn qr_francis_shift(mut m: MatrixViewMut) {
         let mut z = m[[1, 0]] * m[[2, 1]];
 
         for k in 0..p - 1 {
-            let u = hh_vec(array![x, y, z].view());
+            let v = hh_vec(array![x, y, z].view());
             let r = max(1, k) - 1;
-            hh_rot_left(u.view(), m.slice_mut(s![k..k+3, r..n]));
+            hh_rot_left(v.view(), m.slice_mut(s![k..k+3, r..n]));
 
             let r = min(k + 4, p) - 1;
-            hh_rot_right(u.view(), m.slice_mut(s![0..r+1, k..k+3]));
-            hh_rot_right(u.view(), o.slice_mut(s![0..r+1, k..k+3]));
+            hh_rot_right(v.view(), m.slice_mut(s![0..r+1, k..k+3]));
+            hh_rot_right(v.view(), u.slice_mut(s![0..r+1, k..k+3]));
 
             if k != p - 2 {
                 x = m[[k + 1, k]];
@@ -147,7 +151,7 @@ pub fn qr_francis_shift(mut m: MatrixViewMut) {
         let gv = givens(x, y);
         givens_rot_left(gv, m.slice_mut(s![q..q+2, p-2..n]));
         givens_rot_right(gv, m.slice_mut(s![0..p+1, q..q+2]));
-        givens_rot_right(gv, o.slice_mut(s![0..p+1, q..q+2]));
+        givens_rot_right(gv, u.slice_mut(s![0..p+1, q..q+2]));
 
         if m[[p, q]].abs() < EPS * (m[[q, q]].abs() + m[[p, p]].abs()) {
             m[[p, q]] = 0.;
@@ -156,11 +160,15 @@ pub fn qr_francis_shift(mut m: MatrixViewMut) {
             m[[p - 1, q - 1]] = 0.;
             p -= 2;
         }
+
+        i += 1;
     }
+
+    u
 }
 
 fn schur_decomposition(mut m: MatrixViewMut) -> Matrix {
     let q1 = hess_form(m.view_mut());
-    let q2 = qr_francis_shift(m);
-    q2.dot(q1)
+    let q2 = qr_francis_shift(m.view_mut());
+    q2.dot(&q1)
 }
