@@ -14,8 +14,8 @@ mod tests {
         println!("{}", r);
 
         println!("QR -- unshifted");
-        let b = ndarray::array![[2., -3.], [-1., 1.]];
-        let eig = crate::qr::qr_unshifted(b.view(), 40);
+        let mut b = ndarray::array![[2., -3.], [-1., 1.]];
+        let eig = crate::qr::qr_unshifted(b.view_mut(), 40);
         println!("{}", eig);
 
         println!("QR -- Hessenberg");
@@ -40,7 +40,7 @@ mod tests {
             [-1., 2., 6.],
             [7., 0., 1.],
             [-0., -3., 3.]];
-        crate::qr::qr_francis_shift(e.view_mut());
+        crate::qr::qr_francis_shift(e.view_mut(), 1000000);
         println!("{}", e);
     }
 }
