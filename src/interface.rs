@@ -1,6 +1,6 @@
-use crate::types::*;
 use crate::algorithms::*;
 use crate::checks::*;
+use crate::types::*;
 
 pub fn schur_form_inplace_unsafe_opts(mut m: MatrixViewMut, opts: &QROptions) -> Matrix {
     let mut u = Matrix::eye(m.shape()[0]);

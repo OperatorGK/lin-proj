@@ -38,7 +38,7 @@ impl fmt::Display for QRError {
         match self {
             QRError::NotSquare => write!(f, "supplied matrix is not square"),
             QRError::NotSymmetric => write!(f, "supplied matrix is not symmetric"),
-            QRError::ConvergenceFailed => write!(f, "algorithm failed to converge")
+            QRError::ConvergenceFailed => write!(f, "algorithm failed to converge"),
         }
     }
 }

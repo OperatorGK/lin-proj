@@ -1,7 +1,7 @@
+mod algorithms;
+mod checks;
 #[warn(dead_code)]
 mod types;
-mod checks;
-mod algorithms;
 
 pub mod interface;
 

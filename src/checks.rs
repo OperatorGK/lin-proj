@@ -19,8 +19,8 @@ pub fn diff_triag(m: MatrixView) -> f64 {
     for i in 0..n {
         for j in 0..i {
             t[[i, j]] = 0.;
-        };
-    };
+        }
+    }
     diff_rel(t.view(), m)
 }
 
@@ -30,8 +30,8 @@ pub fn diff_subtriag(m: MatrixView) -> f64 {
     for i in 1..n {
         for j in 0..i - 1 {
             t[[i, j]] = 0.;
-        };
-    };
+        }
+    }
     diff_rel(t.view(), m)
 }
 
@@ -41,7 +41,11 @@ pub fn diff_symm(m: MatrixView) -> f64 {
     for i in 0..n {
         for j in 0..i {
             t[[i, j]] = t[[j, i]];
-        };
-    };
+        }
+    }
     diff_rel(t.view(), m)
+}
+
+pub fn is_finite(m: MatrixView) -> bool {
+    m.iter().all(|x| x.is_finite())
 }
