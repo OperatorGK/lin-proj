@@ -124,6 +124,15 @@ fn householder_refl_right(u: VectorView, mut m: MatrixViewMut) {
     m -= &(2. * m.dot(&u).dot(&u.t()));
 }
 
+fn zero_hessenberg_entries(mut m: MatrixViewMut) {
+    let n = m.shape()[0];
+    for i in 1..n {
+        for j in 0..i - 1 {
+            m[[i, j]] = 0.;
+        };
+    };
+}
+
 pub fn reduce_to_hessenberg_form(mut m: MatrixViewMut, mut u: MatrixViewMut) {
     let n = m.shape()[0];
     for k in 0..n - 2 {
@@ -132,6 +141,7 @@ pub fn reduce_to_hessenberg_form(mut m: MatrixViewMut, mut u: MatrixViewMut) {
         householder_refl_right(v.view(), m.slice_mut(s![0..n, k+1..n]));
         householder_refl_right(v.view(), u.slice_mut(s![0..n, k+1..n]));
     }
+    zero_hessenberg_entries(m.view_mut());
 }
 
 #[inline]
@@ -178,7 +188,7 @@ fn implicit_double_step(mut m: MatrixViewMut, mut u: MatrixViewMut, mut v: Vecto
         let r = max(1, k);
         householder_refl_left(refl.view(), m.slice_mut(s![k..k+3, r-1..n]));
 
-        let r = min(k + 4, p);
+        let r = min(k + 4, p + 1);
         householder_refl_right(refl.view(), m.slice_mut(s![0..r, k..k+3]));
         householder_refl_right(refl.view(), u.slice_mut(s![0..n, k..k+3]));
 
@@ -202,24 +212,25 @@ pub fn qr_algorithm_francis(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &Q
 
     while p > 1 && i < opts.iterations {
         let q = p - 1;
+        if eigval_collapsed(opts.eps, m[[p, q]], m[[q, q]], m[[p, p]]) {
+            m[[p, q]] = 0.;
+            p -= 1;
+            continue;
+        } else if eigval_collapsed(opts.eps, m[[p - 1, q - 1]], m[[q - 1, q - 1]], m[[q, q]]) {
+            m[[p - 1, q - 1]] = 0.;
+            p -= 2;
+            continue;
+        }
 
-        let s = m[[q, q]] + m[[p, p]];
-        let t = m[[q, q]] * m[[p, p]] - m[[q, p]] * m[[p, q]];
+        let trace = m[[q, q]] + m[[p, p]];
+        let det = m[[q, q]] * m[[p, p]] - m[[q, p]] * m[[p, q]];
 
-        let x = m[[0, 0]] * m[[0, 0]] + m[[0, 1]] * m[[1, 0]] - s * m[[0, 0]] + t;
-        let y = m[[1, 0]] * (m[[0, 0]] + m[[1, 1]] - s);
+        let x = m[[0, 0]] * m[[0, 0]] + m[[0, 1]] * m[[1, 0]] - trace * m[[0, 0]] + det;
+        let y = m[[1, 0]] * (m[[0, 0]] + m[[1, 1]] - trace);
         let z = m[[1, 0]] * m[[2, 1]];
 
         let mut v = array![x, y, z];
         implicit_double_step(m.view_mut(), u.view_mut(), v.view_mut(), p);
-
-        if eigval_collapsed(opts.eps, m[[p, q]], m[[q, q]], m[[p, p]]) {
-            m[[p, q]] = 0.;
-            p -= 1;
-        } else if eigval_collapsed(opts.eps, m[[p - 1, q - 1]], m[[q - 1, q - 1]], m[[q, q]]) {
-            m[[p - 1, q - 1]] = 0.;
-            p -= 2;
-        }
 
         i += 1;
     }
