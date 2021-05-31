@@ -7,6 +7,7 @@ pub const DEFAULT_OPTS: QROptions =
     QROptions {
         eps: 1e-8,
         iterations: 1_000,
+        algorithm: QRAlgorithm::Default,
     };
 
 #[inline]
@@ -21,6 +22,7 @@ fn proj(v: VectorView, u: VectorView) -> Vector {
     vu / uu * u.into_owned()
 }
 
+#[inline]
 fn stack_owned(axis: Axis, vs: &[Vector]) -> Matrix {
     let views: Vec<VectorView> = vs.into_iter().map(|x| x.view()).collect();
     stack(axis, views.as_slice()).unwrap()
@@ -103,7 +105,10 @@ pub fn qr_algorithm_hessenberg(mut m: MatrixViewMut, mut u: MatrixViewMut, opts:
 fn householder_vec(x: VectorView) -> Vector {
     let mut u = x.into_owned();
     u[0] += u[0].signum() * norm(x);
-    u /= norm(u.view());
+    let n = norm(u.view());
+    if n != 0. {
+        u /= n;
+    };
     u
 }
 
@@ -130,20 +135,7 @@ pub fn reduce_to_hessenberg_form(mut m: MatrixViewMut, mut u: MatrixViewMut) {
 }
 
 #[inline]
-fn eigval_2by2(m: MatrixView) -> f64 {
-    let p = m[[0, 0]] + m[[1, 1]];      // x^2 - px + q
-    let q = m[[0, 0]] * m[[1, 1]] - m[[0, 1]] * m[[1, 0]];
-    let d = p * p - 4. * q;
-    if d < 0. {
-        p / 2.
-    } else {
-        (d.sqrt() + p) / 2.
-    }
-}
-
-#[inline]
-fn rot_2by2(m: MatrixView) -> (f64, f64) {
-    let e = eigval_2by2(m);
+fn rot_2by2_real(m: MatrixView, e: f64) -> (f64, f64) {
     let v = match (m[[0, 1]], m[[1, 0]]) {
         (b, _) if b != 0. => (b, e - m[[0, 0]]),
         (_, c) if c != 0. => (e - m[[1, 1]], c),
@@ -153,11 +145,24 @@ fn rot_2by2(m: MatrixView) -> (f64, f64) {
     (v.0 / h, -v.1 / h)
 }
 
-pub fn schur_decomposition_2by2(mut m: MatrixViewMut, mut u: MatrixViewMut) {
-    let rot = rot_2by2(m.view());
-    givens_rot_left(rot, m.view_mut());
-    givens_rot_right(rot, m.view_mut());
-    givens_rot_right(rot, u.view_mut());
+#[inline]
+fn rot_2by2_complex(m: MatrixView) -> (f64, f64) {
+    let a = m[[0, 1]] + m[[1, 0]];
+    let b = m[[0, 0]] - m[[1, 1]];
+    let phi = b.atan2(a) / 2.;
+    (phi.cos(), phi.sin())
+}
+
+#[inline]
+fn rot_2by2(m: MatrixView) -> (f64, f64) {
+    let p = m[[0, 0]] + m[[1, 1]];      // x^2 - px + q
+    let q = m[[0, 0]] * m[[1, 1]] - m[[0, 1]] * m[[1, 0]];
+    let d = p * p - 4. * q;
+    if d < 0. {
+        rot_2by2_complex(m)
+    } else {
+        rot_2by2_real(m, (d.sqrt() + p) / 2.)
+    }
 }
 
 #[inline]
@@ -165,24 +170,29 @@ fn eigval_collapsed(eps: f64, subdiag: f64, upper: f64, lower: f64) -> bool {
     subdiag.abs() < eps * (upper.abs() + lower.abs())
 }
 
-fn francis_refl(mut m: MatrixViewMut, mut u: MatrixViewMut, mut v: VectorViewMut, p: usize) {
+fn implicit_double_step(mut m: MatrixViewMut, mut u: MatrixViewMut, mut v: VectorViewMut, p: usize) {
     let n = m.shape()[0];
     for k in 0..p - 1 {
         let refl = householder_vec(v.view());
 
-        let r = max(1, k) - 1;
-        householder_refl_left(refl.view(), m.slice_mut(s![k..k+3, r..n]));
+        let r = max(1, k);
+        householder_refl_left(refl.view(), m.slice_mut(s![k..k+3, r-1..n]));
 
-        let r = min(k + 4, p) - 1;
-        householder_refl_right(refl.view(), m.slice_mut(s![0..r+1, k..k+3]));
-        householder_refl_right(refl.view(), u.slice_mut(s![0..r+1, k..k+3]));
+        let r = min(k + 4, p);
+        householder_refl_right(refl.view(), m.slice_mut(s![0..r, k..k+3]));
+        householder_refl_right(refl.view(), u.slice_mut(s![0..n, k..k+3]));
 
+        v[0] = m[[k + 1, k]];
+        v[1] = m[[k + 2, k]];
         if k != p - 2 {
-            v[0] = m[[k + 1, k]];
-            v[1] = m[[k + 2, k]];
             v[2] = m[[k + 3, k]];
         }
     }
+
+    let rot = givens(v[0], v[1]);
+    givens_rot_left(rot, m.slice_mut(s![p-1..p+1, p-2..n]));
+    givens_rot_right(rot, m.slice_mut(s![0..p+1, p-1..p+1]));
+    givens_rot_right(rot, u.slice_mut(s![0..n, p-1..p+1]));
 }
 
 pub fn qr_algorithm_francis(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &QROptions) {
@@ -201,12 +211,7 @@ pub fn qr_algorithm_francis(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &Q
         let z = m[[1, 0]] * m[[2, 1]];
 
         let mut v = array![x, y, z];
-        francis_refl(m.view_mut(), u.view_mut(), v.view_mut(), p);
-
-        let gv = givens(x, y);
-        givens_rot_left(gv, m.slice_mut(s![q..q+2, p-2..n]));
-        givens_rot_right(gv, m.slice_mut(s![0..p+1, q..q+2]));
-        givens_rot_right(gv, u.slice_mut(s![0..p+1, q..q+2]));
+        implicit_double_step(m.view_mut(), u.view_mut(), v.view_mut(), p);
 
         if eigval_collapsed(opts.eps, m[[p, q]], m[[q, q]], m[[p, p]]) {
             m[[p, q]] = 0.;
@@ -217,6 +222,21 @@ pub fn qr_algorithm_francis(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &Q
         }
 
         i += 1;
+    }
+}
+
+pub fn francis_block_reduction(mut m: MatrixViewMut, mut u: MatrixViewMut, eps: f64) {
+    let (mut i, n) = (0, m.shape()[0]);
+    while i + 1 < n {
+        if m[[i + 1, i]].abs() < eps {
+            i += 1;
+            continue;
+        }
+        let rot = rot_2by2(m.slice(s![i..i+2, i..i+2]));
+        givens_rot_left(rot, m.slice_mut(s![i..i+2, i..n]));
+        givens_rot_right(rot, m.slice_mut(s![0..i+2, i..i+2]));
+        givens_rot_right(rot, u.slice_mut(s![0..n, i..i+2]));
+        i += 2;
     }
 }
 
@@ -293,11 +313,11 @@ fn sort_singular_values(mut z: VectorViewMut, mut u: MatrixViewMut) {
     u.assign(&new_u);
 }
 
-pub fn svd(m: MatrixView, opts: &QROptions) -> (Matrix, Vector, Matrix) {
+pub fn svd(m: MatrixView) -> (Matrix, Vector, Matrix) {
     let mut s = m.dot(&m.t());
     let mut u = Matrix::eye(s.shape()[0]);
     reduce_to_hessenberg_form(s.view_mut(), u.view_mut());
-    symmetric_qr_algorithm(s.view_mut(), u.view_mut(), opts);
+    symmetric_qr_algorithm(s.view_mut(), u.view_mut(), &DEFAULT_OPTS);
     let mut z: Vector = s.diag().into_iter().map(|x| x.sqrt()).collect();
     sort_singular_values(z.view_mut(), u.view_mut());
     let mut vs: Vec<Vector> = (0..z.shape()[0]).map(|i| m.t().dot(&u.column(i)) / z[i]).collect();
