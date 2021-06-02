@@ -16,7 +16,7 @@ pub fn proj(v: VectorView, u: VectorView) -> Vector {
 
 #[inline]
 pub fn stack_owned(axis: Axis, vs: &[Vector]) -> Matrix {
-    let views: Vec<VectorView> = vs.into_iter().map(|x| x.view()).collect();
+    let views: Vec<VectorView> = vs.iter().map(|x| x.view()).collect();
     stack(axis, views.as_slice()).unwrap()
 }
 
@@ -28,8 +28,8 @@ pub fn eigval_collapsed(eps: f64, subdiag: f64, upper: f64, lower: f64) -> bool 
 pub fn sort_diagonal_values(mut z: VectorViewMut, mut u: MatrixViewMut) {
     let mut perm: Vec<usize> = (0..z.shape()[0]).collect();
     perm.sort_by(|i1, i2| z[[*i2]].partial_cmp(&z[[*i1]]).unwrap_or(Ordering::Equal));
-    let new_z: Vector = (&perm).into_iter().map(|i| z[[*i]]).collect();
-    let cols: Vec<VectorView> = perm.into_iter().map(|i| u.column(i)).collect();
+    let new_z: Vector = (&perm).iter().map(|i| z[[*i]]).collect();
+    let cols: Vec<VectorView> = perm.iter().map(|i| u.column(*i)).collect();
     let new_u: Matrix = stack(Axis(1), cols.as_slice()).unwrap();
     z.assign(&new_z);
     u.assign(&new_u);

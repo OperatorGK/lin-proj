@@ -9,6 +9,7 @@ pub fn diff_rel(orig: MatrixView, res: MatrixView) -> f64 {
     frob_norm(diff.view()) / frob_norm(orig.view())
 }
 
+#[allow(dead_code)]
 pub fn diff_unit(u: MatrixView) -> f64 {
     diff_rel(u.dot(&u.t()).view(), Matrix::eye(u.shape()[0]).view())
 }
