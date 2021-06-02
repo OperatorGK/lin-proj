@@ -1,11 +1,11 @@
-use crate::*;
-use crate::implementation::common::*;
-use crate::implementation::householder::*;
-use crate::implementation::givens::*;
 use crate::implementation::blocks::*;
+use crate::implementation::common::*;
+use crate::implementation::givens::*;
+use crate::implementation::householder::*;
+use crate::*;
 
-use std::cmp::{max, min};
 use ndarray::{array, s};
+use std::cmp::{max, min};
 
 #[inline]
 fn francis_reflection_axis(m: MatrixView, p: usize) -> Vector {
@@ -69,7 +69,13 @@ pub fn qr_algorithm_francis(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &Q
         }
 
         let v = francis_reflection_axis(m.view(), p);
-        francis_qr_step(m.view_mut(), u.view_mut(), v, p, opts.accumulate_sim_transforms);
+        francis_qr_step(
+            m.view_mut(),
+            u.view_mut(),
+            v,
+            p,
+            opts.accumulate_sim_transforms,
+        );
 
         i += 1;
     }

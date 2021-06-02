@@ -1,5 +1,5 @@
-use crate::*;
 use crate::implementation::common::extract_eigenvalues;
+use crate::*;
 
 pub fn eigenvalues_opts(m: MatrixView, opts: &QROptions) -> Result<Vec<Complex>> {
     let (t, _) = schur_form_opts(m, opts)?;

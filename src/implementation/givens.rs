@@ -22,4 +22,3 @@ pub fn givens_rot_right(gv: (f64, f64), mut m: MatrixViewMut) {
     let g = array![[gv.0, gv.1], [-gv.1, gv.0]];
     m.assign(&m.dot(&g));
 }
-

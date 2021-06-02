@@ -1,5 +1,5 @@
-use crate::*;
 use crate::implementation::checks::finite_entries;
+use crate::*;
 
 #[inline]
 pub fn hessenberg_form_inplace_opts(mut m: MatrixViewMut, opts: &QROptions) -> Result<Matrix> {

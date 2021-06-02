@@ -1,5 +1,5 @@
 use crate::*;
-use ndarray::{Axis, stack};
+use ndarray::{stack, Axis};
 use std::cmp::Ordering;
 
 #[inline]
@@ -46,7 +46,11 @@ pub fn orthonormalize(orth: &mut [Vector]) {
 }
 
 pub fn zero_subeps_entries(mut m: MatrixViewMut, eps: f64) {
-    m.map_inplace(|x| if x.abs() < eps { *x = 0.; })
+    m.map_inplace(|x| {
+        if x.abs() < eps {
+            *x = 0.;
+        }
+    })
 }
 
 pub fn extract_eigenvalues(m: MatrixView) -> Vec<Complex> {

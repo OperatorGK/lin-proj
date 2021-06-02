@@ -1,5 +1,5 @@
-use crate::*;
 use crate::implementation::checks::finite_entries;
+use crate::*;
 
 pub fn svd_opts(m: MatrixView, opts: &QROptions) -> Result<(Matrix, Vector, Matrix)> {
     if opts.do_safety_checks && !finite_entries(m.view()) {

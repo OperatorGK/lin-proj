@@ -1,6 +1,6 @@
-use crate::*;
 use crate::implementation::checks::finite_entries;
 use crate::implementation::common::zero_subeps_entries;
+use crate::*;
 
 pub fn qr_decomposition_opts(m: MatrixView, opts: &QROptions) -> Result<(Matrix, Matrix)> {
     if opts.do_safety_checks {

@@ -1,10 +1,10 @@
-pub mod common;
-pub mod qr_basic;
-pub mod givens;
-pub mod householder;
 pub mod blocks;
-pub mod hessenberg;
+pub mod checks;
+pub mod common;
 pub mod francis;
+pub mod givens;
+pub mod hessenberg;
+pub mod householder;
+pub mod qr_basic;
 pub mod qr_symmetric;
 pub mod svd;
-pub mod checks;

@@ -1,6 +1,6 @@
-use crate::*;
-use crate::implementation::householder::*;
 use crate::implementation::givens::*;
+use crate::implementation::householder::*;
+use crate::*;
 
 use ndarray::s;
 

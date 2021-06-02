@@ -1,7 +1,7 @@
-use crate::*;
+use crate::implementation::blocks::*;
 use crate::implementation::common::*;
 use crate::implementation::givens::*;
-use crate::implementation::blocks::*;
+use crate::*;
 
 use ndarray::s;
 
@@ -18,7 +18,15 @@ fn wilkinson_shift(m: MatrixView, p: usize) -> f64 {
 }
 
 #[inline]
-fn implicit_tridiagonal_rotation(mut m: MatrixViewMut, x: &mut f64, y: &mut f64, c: f64, s: f64, k: usize, p: usize) {
+fn implicit_tridiagonal_rotation(
+    mut m: MatrixViewMut,
+    x: &mut f64,
+    y: &mut f64,
+    c: f64,
+    s: f64,
+    k: usize,
+    p: usize,
+) {
     let w = c * *x - s * *y;
     let d = m[[k, k]] - m[[k + 1, k + 1]];
     let z = (2. * c * m[[k + 1, k]] + d * s) * s;

@@ -1,7 +1,7 @@
-use crate::*;
 use crate::implementation::common::*;
-use crate::implementation::hessenberg::{hessenberg_form};
+use crate::implementation::hessenberg::hessenberg_form;
 use crate::implementation::qr_symmetric::*;
+use crate::*;
 
 use ndarray::Axis;
 

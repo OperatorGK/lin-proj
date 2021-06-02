@@ -6,18 +6,17 @@ mod bench {
     use crate::*;
 
     use ndarray::Array;
-    use ndarray_rand::RandomExt;
     use ndarray_rand::rand_distr::Uniform;
+    use ndarray_rand::RandomExt;
 
-    use super::test::{Bencher, black_box};
+    use super::test::{black_box, Bencher};
 
     #[bench]
     fn bench_francis(b: &mut Bencher) {
-        let mut a = Array::random([100, 100], Uniform::new(-10., 10.));
+        let a = Array::random([100, 100], Uniform::new(-10., 10.));
         b.iter(|| {
-            let q = schur_form_inplace(a.view_mut());
-            black_box(q.unwrap());
-        }
-        )
+            let (t, _) = schur_form(a.view()).unwrap();
+            black_box(t);
+        })
     }
 }

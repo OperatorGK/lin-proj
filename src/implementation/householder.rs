@@ -1,5 +1,5 @@
-use crate::*;
 use crate::implementation::common::*;
+use crate::*;
 
 #[inline]
 pub fn householder_vec(x: VectorView) -> Vector {

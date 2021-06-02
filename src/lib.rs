@@ -1,8 +1,8 @@
 #![feature(test)]
 
-mod interface;
-mod implementation;
 mod bench;
+mod implementation;
+mod interface;
 mod tests;
 
 pub use interface::*;

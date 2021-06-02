@@ -1,10 +1,10 @@
-use crate::*;
-use crate::implementation::checks::{finite_entries, diff_symm, diff_subtriag, diff_triag};
-use crate::implementation::qr_basic::qr_algorithm_naive;
-use crate::implementation::francis::{qr_algorithm_francis, francis_block_reduction};
-use crate::implementation::hessenberg::{hessenberg_form, qr_algorithm_hessenberg};
-use crate::implementation::qr_symmetric::qr_algorithm_symmetric;
+use crate::implementation::checks::{diff_subtriag, diff_symm, diff_triag, finite_entries};
 use crate::implementation::common::zero_subeps_entries;
+use crate::implementation::francis::{francis_block_reduction, qr_algorithm_francis};
+use crate::implementation::hessenberg::{hessenberg_form, qr_algorithm_hessenberg};
+use crate::implementation::qr_basic::qr_algorithm_naive;
+use crate::implementation::qr_symmetric::qr_algorithm_symmetric;
+use crate::*;
 
 pub fn schur_form_inplace_opts(mut m: MatrixViewMut, opts: &QROptions) -> Result<Matrix> {
     if opts.do_safety_checks {
@@ -46,11 +46,12 @@ pub fn schur_form_inplace_opts(mut m: MatrixViewMut, opts: &QROptions) -> Result
     }
 
     if opts.do_safety_checks {
-        if opts.algorithm == QRAlgorithm::Francis && !(diff_subtriag(m.view()) < opts.eps.sqrt()) {
-            return Err(QRError::ConvergenceFailed);
-        }
+        let diff = match opts.algorithm {
+            QRAlgorithm::Default | QRAlgorithm::Francis => diff_subtriag(m.view()),
+            _ => diff_triag(m.view()),
+        };
 
-        if opts.algorithm != QRAlgorithm::Francis && !(diff_triag(m.view()) < opts.eps.sqrt()) {
+        if !(diff < opts.eps.sqrt()) {
             return Err(QRError::ConvergenceFailed);
         }
     }
