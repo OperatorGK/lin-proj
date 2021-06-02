@@ -1,5 +1,11 @@
 use std::fmt;
 
+/// Possible algorithm errors
+///
+/// - NotFinite --- supplied matrix has infinite or NaN entries.
+/// - NotSquare --- supplied matrix is not square.
+/// - NotSymmetric --- symmetric algorithm used, but the matrix is not symmetric.
+/// - ConvergenceFailed --- algorithm failed to converge.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QRError {
     NotFinite,
@@ -19,4 +25,5 @@ impl fmt::Display for QRError {
     }
 }
 
+/// Result<T, QRError>
 pub type Result<T> = std::result::Result<T, QRError>;

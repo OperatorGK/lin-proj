@@ -6,6 +6,10 @@ use ndarray::s;
 
 pub fn hessenberg_form(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &QROptions) {
     let n = m.shape()[0];
+    if n < 2 {
+        return;
+    }
+
     for k in 0..n - 2 {
         let v = householder_vec(m.slice(s![k + 1..n, k]));
         householder_refl_left(v.view(), m.slice_mut(s![k + 1..n, k..n]));

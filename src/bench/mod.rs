@@ -13,9 +13,29 @@ mod bench {
 
     #[bench]
     fn bench_francis(b: &mut Bencher) {
-        let a = Array::random([100, 100], Uniform::new(-10., 10.));
+        let a = Array::random([50, 50], Uniform::new(-10., 10.));
         b.iter(|| {
             let (t, _) = schur_form(a.view()).unwrap();
+            black_box(t);
+        })
+    }
+
+    #[bench]
+    fn bench_symmetric(b: &mut Bencher) {
+        let mut a = Array::random([50, 50], Uniform::new(-10., 10.));
+        for i in 0..50 {
+            for j in 0..i {
+                a[[i, j]] = a[[j, i]]
+            }
+        }
+
+        let opts = QROptions {
+            algorithm: QRAlgorithm::Symmetric,
+            ..DEFAULT_OPTS
+        };
+
+        b.iter(|| {
+            let (t, _) = schur_form_opts(a.view(), &opts).unwrap();
             black_box(t);
         })
     }
