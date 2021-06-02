@@ -24,6 +24,8 @@ pub fn qr_algorithm_naive(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &QRO
     for _ in 0..opts.iterations {
         let (q, r) = qr_decomposition(m.view());
         m.assign(&r.dot(&q));
-        u.assign(&u.dot(&q));
+        if opts.accumulate_sim_transforms {
+            u.assign(&u.dot(&q));
+        }
     }
 }

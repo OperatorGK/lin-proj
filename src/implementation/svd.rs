@@ -1,15 +1,15 @@
 use crate::*;
 use crate::implementation::common::*;
-use crate::implementation::hessenberg::*;
+use crate::implementation::hessenberg::{hessenberg_form};
 use crate::implementation::qr_symmetric::*;
 
 use ndarray::Axis;
 
-pub fn svd(m: MatrixView) -> (Matrix, Vector, Matrix) {
+pub fn svd(m: MatrixView, opts: &QROptions) -> (Matrix, Vector, Matrix) {
     let mut s = m.dot(&m.t());
     let mut u = Matrix::eye(s.shape()[0]);
-    reduce_to_hessenberg_form(s.view_mut(), u.view_mut());
-    symmetric_qr_algorithm(s.view_mut(), u.view_mut(), &DEFAULT_OPTS);
+    hessenberg_form(s.view_mut(), u.view_mut(), opts);
+    qr_algorithm_symmetric(s.view_mut(), u.view_mut(), opts);
 
     let mut z: Vector = s.diag().into_iter().map(|x| x.sqrt()).collect();
     sort_diagonal_values(z.view_mut(), u.view_mut());

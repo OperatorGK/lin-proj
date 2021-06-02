@@ -1,4 +1,4 @@
-use crate::types::*;
+use crate::*;
 
 pub fn frob_norm(m: MatrixView) -> f64 {
     m.iter().map(|x| x * x).sum::<f64>().sqrt()
@@ -48,14 +48,4 @@ pub fn diff_symm(m: MatrixView) -> f64 {
 
 pub fn finite_entries(m: MatrixView) -> bool {
     m.iter().all(|x| x.is_finite())
-}
-
-pub fn subdiag_convergence(m: MatrixView, eps: f64) -> bool {
-    let n = m.shape()[0];
-    for i in 0..n - 1 {
-        if m[[i + 1, i]] >= eps {
-            return false;
-        }
-    }
-    return true;
 }

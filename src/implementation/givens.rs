@@ -1,4 +1,5 @@
 use crate::*;
+use ndarray::array;
 
 #[inline]
 pub fn givens(a: f64, b: f64) -> (f64, f64) {

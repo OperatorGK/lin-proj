@@ -5,6 +5,7 @@ use crate::implementation::givens::*;
 use crate::implementation::blocks::*;
 
 use std::cmp::{max, min};
+use ndarray::{array, s};
 
 #[inline]
 fn francis_reflection_axis(m: MatrixView, p: usize) -> Vector {
@@ -16,11 +17,10 @@ fn francis_reflection_axis(m: MatrixView, p: usize) -> Vector {
     let y = m[[1, 0]] * (m[[0, 0]] + m[[1, 1]] - trace);
     let z = m[[1, 0]] * m[[2, 1]];
 
-    array![x, y, z];
+    array![x, y, z]
 }
 
-#[inline]
-fn francis_qr_step(mut m: MatrixViewMut, mut u: MatrixViewMut, mut v: Vector, p: usize) {
+fn francis_qr_step(mut m: MatrixViewMut, mut u: MatrixViewMut, mut v: Vector, p: usize, acc: bool) {
     let n = m.shape()[0];
     for k in 0..p - 1 {
         let refl = householder_vec(v.view());
@@ -30,7 +30,10 @@ fn francis_qr_step(mut m: MatrixViewMut, mut u: MatrixViewMut, mut v: Vector, p:
 
         let r = min(k + 4, p + 1);
         householder_refl_right(refl.view(), m.slice_mut(s![0..r, k..k + 3]));
-        householder_refl_right(refl.view(), u.slice_mut(s![0..n, k..k + 3]));
+
+        if acc {
+            householder_refl_right(refl.view(), u.slice_mut(s![0..n, k..k + 3]));
+        }
 
         v[0] = m[[k + 1, k]];
         v[1] = m[[k + 2, k]];
@@ -42,7 +45,10 @@ fn francis_qr_step(mut m: MatrixViewMut, mut u: MatrixViewMut, mut v: Vector, p:
     let rot = givens(v[0], v[1]);
     givens_rot_left(rot, m.slice_mut(s![p - 1..p + 1, p - 2..n]));
     givens_rot_right(rot, m.slice_mut(s![0..p + 1, p - 1..p + 1]));
-    givens_rot_right(rot, u.slice_mut(s![0..n, p - 1..p + 1]));
+
+    if acc {
+        givens_rot_right(rot, u.slice_mut(s![0..n, p - 1..p + 1]));
+    }
 }
 
 pub fn qr_algorithm_francis(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &QROptions) {
@@ -63,24 +69,26 @@ pub fn qr_algorithm_francis(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &Q
         }
 
         let v = francis_reflection_axis(m.view(), p);
-        francis_qr_step(m.view_mut(), u.view_mut(), v, p);
+        francis_qr_step(m.view_mut(), u.view_mut(), v, p, opts.accumulate_sim_transforms);
 
         i += 1;
     }
-    println!("{}", i);
 }
 
-pub fn francis_block_reduction(mut m: MatrixViewMut, mut u: MatrixViewMut, eps: f64) {
+pub fn francis_block_reduction(mut m: MatrixViewMut, mut u: MatrixViewMut, opts: &QROptions) {
     let (mut i, n) = (0, m.shape()[0]);
     while i + 1 < n {
-        if m[[i + 1, i]].abs() < eps {
+        if m[[i + 1, i]].abs() < opts.eps {
             i += 1;
             continue;
         }
         let rot = rot_2by2(m.slice(s![i..i + 2, i..i + 2]));
         givens_rot_left(rot, m.slice_mut(s![i..i + 2, i..n]));
         givens_rot_right(rot, m.slice_mut(s![0..i + 2, i..i + 2]));
-        givens_rot_right(rot, u.slice_mut(s![0..n, i..i + 2]));
+
+        if opts.accumulate_sim_transforms {
+            givens_rot_right(rot, u.slice_mut(s![0..n, i..i + 2]));
+        }
         i += 2;
     }
 }
