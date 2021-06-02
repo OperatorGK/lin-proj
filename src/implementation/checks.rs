@@ -46,6 +46,16 @@ pub fn diff_symm(m: MatrixView) -> f64 {
     diff_rel(t.view(), m)
 }
 
-pub fn is_finite(m: MatrixView) -> bool {
+pub fn finite_entries(m: MatrixView) -> bool {
     m.iter().all(|x| x.is_finite())
+}
+
+pub fn subdiag_convergence(m: MatrixView, eps: f64) -> bool {
+    let n = m.shape()[0];
+    for i in 0..n - 1 {
+        if m[[i + 1, i]] >= eps {
+            return false;
+        }
+    }
+    return true;
 }

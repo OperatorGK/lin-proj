@@ -1,0 +1,10 @@
+mod common;
+mod qr_basic;
+mod givens;
+mod householder;
+mod blocks;
+mod hessenberg;
+mod francis;
+mod qr_symmetric;
+mod svd;
+mod checks;

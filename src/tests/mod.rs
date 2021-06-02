@@ -4,6 +4,10 @@ mod tests {
     use crate::checks::*;
     use crate::types::*;
 
+    use ndarray::Array;
+    use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
+
     const OPTS: QROptions = crate::algorithms::DEFAULT_OPTS;
     const EPS: f64 = OPTS.eps;
 
@@ -60,24 +64,18 @@ mod tests {
 
     #[test]
     fn test_qr_francis() {
-        let a = ndarray::array![
-            [7., 3., 4., -11., -9., -2.],
-            [-6., 4., -5., 7., 1., 12.],
-            [-1., -9., 2., 2., 9., 1.],
-            [-8., 0., -1., 5., 0., 8.],
-            [-4., 3., -5., 7., 2., 10.],
-            [6., 1., 4., -11., -7., -1.]
-        ];
-        let mut b = a.clone();
-        let mut c = Matrix::eye(6);
-        reduce_to_hessenberg_form(b.view_mut(), c.view_mut());
-        qr_algorithm_francis(b.view_mut(), c.view_mut(), &OPTS);
-        francis_block_reduction(b.view_mut(), c.view_mut(), EPS);
-        println!("{:.2}", b);
+        for i in 0..10 {
+            let a = Array::random([100, 100], Uniform::new(-10., 10.));
+            let mut b = a.clone();
+            let mut c = Matrix::eye(100);
+            reduce_to_hessenberg_form(b.view_mut(), c.view_mut());
+            qr_algorithm_francis(b.view_mut(), c.view_mut(), &OPTS);
+            francis_block_reduction(b.view_mut(), c.view_mut(), EPS);
 
-        assert!(diff_subtriag(b.view()) < EPS);
-        assert!(diff_unit(c.view()) < EPS);
-        assert!(diff_rel(a.view(), c.dot(&b).dot(&c.t()).view()) < EPS);
+            assert!(diff_subtriag(b.view()) < EPS);
+            assert!(diff_unit(c.view()) < EPS);
+            assert!(diff_rel(a.view(), c.dot(&b).dot(&c.t()).view()) < EPS);
+        }
     }
 
     #[test]
@@ -108,8 +106,8 @@ mod tests {
             [0.896292, 0.0657661, 0.356057, 0.254651],
             [0.0963825, 0.443201, 0.793147, 0.720426]
         ])
-        .t()
-        .into_owned();
+            .t()
+            .into_owned();
 
         let (u, s, vt) = svd(a.view());
         let mut ss = crate::Matrix::zeros((4, 6));

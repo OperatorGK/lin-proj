@@ -24,23 +24,7 @@ pub struct QROptions {
     pub eps: f64,
     pub iterations: usize,
     pub algorithm: QRAlgorithm,
+    pub skip_safety_checks: bool,
+    pub zero_entries: bool,
+    pub accumulate_sim_transforms: bool,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum QRError {
-    NotSquare,
-    NotSymmetric,
-    ConvergenceFailed,
-}
-
-impl fmt::Display for QRError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            QRError::NotSquare => write!(f, "supplied matrix is not square"),
-            QRError::NotSymmetric => write!(f, "supplied matrix is not symmetric"),
-            QRError::ConvergenceFailed => write!(f, "algorithm failed to converge"),
-        }
-    }
-}
-
-pub type Result<T> = std::result::Result<T, QRError>;

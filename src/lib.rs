@@ -1,10 +1,8 @@
-mod algorithms;
-mod checks;
-#[warn(dead_code)]
-mod types;
+#![feature(test)]
 
-pub mod interface;
-
-pub use types::*;
-
+mod interface;
+mod implementation;
+mod bench;
 mod tests;
+
+pub use interface::*;

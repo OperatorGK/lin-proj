@@ -1,6 +1,16 @@
 use crate::algorithms::*;
-use crate::checks::*;
+use crate::aux::extract_eigenvalues;
 use crate::types::*;
+
+pub mod types;
+mod checks;
+
+pub const DEFAULT_OPTS: QROptions = QROptions {
+    eps: 1e-8,
+    iterations: 1000,
+    algorithm: QRAlgorithm::Default,
+    skip_safety_checks: false,
+};
 
 pub fn schur_form_inplace_unsafe_opts(mut m: MatrixViewMut, opts: &QROptions) -> Matrix {
     let mut u = Matrix::eye(m.shape()[0]);
@@ -76,4 +86,10 @@ pub fn svd(m: MatrixView) -> (Matrix, Vector, Matrix) {
     } else {
         crate::algorithms::svd(m)
     }
+}
+
+pub fn eigenvalues(m: MatrixView) -> Result<Vec<Complex>> {
+    let (t, _) = schur_form(m)?;
+    let eig = extract_eigenvalues(t.view());
+    Ok(eig)
 }
