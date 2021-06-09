@@ -12,3 +12,5 @@
 Бенчмарки: `cargo bench`
 
 Документация: `cargo doc`, вывод в `/target/doc/lin_proj/*`, начальная страница `index.html`.
+
+Также документация доступна по адресу [operatorgk.github.io](https://operatorgk.github.io)
